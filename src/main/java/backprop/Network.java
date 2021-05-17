@@ -76,11 +76,23 @@ public class Network {
             //for the input layer (i = 0) there are no weights from the layer before
             if (i > 0) {
 
-                //initialize the bias array with random values, also creating the array
-                bias[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], -1, 1);
+                //Using the Nguyen - Widrow optimal values
+                double bound = Math.pow(NETWORK_LAYERS_SIZES[i], 1.0 / INPUT_SIZE);
 
-                //initialize the weights array with random values, also creating the array
-                weight[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], NETWORK_LAYERS_SIZES[i-1], -1, 1);
+                //Last layer
+                if (i == NETWORK_SIZE - 1) {
+                    //initialize the bias array with random values, also creating the array
+                    bias[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], -0.5, 0.5);
+
+                    //initialize the weights array with random values, also creating the array
+                    weight[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], NETWORK_LAYERS_SIZES[i-1], -0.5, 0.5);
+                } else {
+                    //initialize the bias array with random values, also creating the array
+                    bias[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], -bound, bound);
+
+                    //initialize the weights array with random values, also creating the array
+                    weight[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], NETWORK_LAYERS_SIZES[i-1], -bound, bound);
+                }
             }
         }
     }

@@ -34,9 +34,9 @@ public class Main {
 //
 ////        Network network = new Network();
 //
-////        backpropagationCrossValidate(new int[]{13, 4, 3}, 1, false, input, target, 10_000, 0.01, logFile);
+//        backpropagationCrossValidate(new int[]{13, 20, 3}, 1, false, input, target, 5_000, 0.001);
 //
-//        backpropagation(new int[]{13, 8, 3}, 1, false, input, target, 10_000, 0.001, 10, logFile);
+////        backpropagation(new int[]{13, 20, 3}, 1, false, input, target, 5_000, 0.001, 10, logFile);
 
         File file = new File("Faults.NNA");
         double[][] dataArray = DataParser.getDataArray(file);
@@ -48,12 +48,55 @@ public class Main {
         double[][] input = DataParser.getInput(dataArray, 0, dataArray.length);
         double[][] target = DataParser.getOutput(dataArray, 0, dataArray.length);
 
-
         File logFile = new File("log.txt");
 
-//        backpropagationCrossValidate(new int[]{27, 25, 20, 7}, 1, false, input, target, 5_000, 0.001);
+        long startTime = System.currentTimeMillis();
 
-        backpropagation(new int[]{27, 40, 30, 7}, 1, false, input, target, 15_000, 0.001, 6, logFile);
+        ArrayList<Double> xV = new ArrayList<>();
+        ArrayList<Double> yV = new ArrayList<>();
+
+        int counter = 0;
+        for (double lr = 0.0001; lr <= 1; lr *= 10) {
+            xV.add(lr);
+            yV.add(backpropagationCrossValidate(new int[]{27, 50, 40, 7}, 1, false, input, target, 500, lr, 10));
+
+            counter++;
+        }
+
+        long stopTime = System.currentTimeMillis();
+
+        double[] xVals = new double[xV.size()];
+        double[] yVals = new double[yV.size()];
+
+        for (int i = 0; i < xV.size(); i++) {
+            xVals[i] = xV.get(i);
+            yVals[i] = yV.get(i);
+        }
+
+
+
+        XYChart xyChart = new XYChartBuilder()
+                .width(800)
+                .height(600)
+                .theme(Styler.ChartTheme.Matlab)
+                .title("PK(lr)")
+                .xAxisTitle("Learning rate")
+                .yAxisTitle("PK")
+                .build();
+
+        XYSeries series1 = xyChart.addSeries("Target", xVals, yVals);
+
+        JFrame chartFrame = new SwingWrapper(xyChart).displayChart();
+
+
+        double seconds = (stopTime - startTime) / 1000.0;
+        double minutes = (double) ((int) seconds / 60);
+
+        System.out.println("Complete Time:" + minutes + " minutes, " + (seconds - 60 * minutes) + " seconds.");
+
+//        backpropagationCrossValidate(new int[]{27, 50, 40, 7}, 1, false, input, target, 500, 0.01, 5);
+
+//        backpropagation(new int[]{27, 50, 40, 7}, 1, false, input, target, 4000, 0.005, 6, logFile);
     }
 
     public static double validateNetwork(Network network, double[][] input, double[][] target) {
@@ -77,7 +120,7 @@ public class Main {
     }
 
     public static double backpropagationCrossValidate(int[] networkLayers, double beta, boolean bipolarActivation, double[][] input, double[][] target,
-                                                      int maxEpoch, double learningRate) {
+                                                      int maxEpoch, double learningRate, int k) {
 
         ArrayList<DataSet> data = new ArrayList<>();
 
@@ -88,7 +131,7 @@ public class Main {
         Collections.shuffle(data);
 
         //number of parts of the data
-        int k = 10;
+//        int k = 10;
 
         //sizes of each data part
         int singleSize = data.size() / k;
@@ -136,9 +179,9 @@ public class Main {
                     for (int j = 0; j < dataParts.get(trainingSet).size(); j++) {
                         network.train(dataParts.get(trainingSet).get(j).getInput(), dataParts.get(trainingSet).get(j).getTarget(), learningRate);
 
-                        double[] outputVal = network.output[network.NETWORK_SIZE - 1];
-                        double error = calculateSquaredError(outputVal, dataParts.get(trainingSet).get(j).getTarget());
-                        sumOfSquaredErrors += error;
+//                        double[] outputVal = network.output[network.NETWORK_SIZE - 1];
+//                        double error = calculateSquaredError(outputVal, dataParts.get(trainingSet).get(j).getTarget());
+//                        sumOfSquaredErrors += error;
 
                     }
 
@@ -174,7 +217,7 @@ public class Main {
         double minutes = (double) ((int) seconds / 60);
 
         System.out.println("Average valid percent:" + sumOfValid / k);
-        System.out.println("Time:" + minutes + " minutes, " + seconds + " seconds.");
+        System.out.println("Time:" + minutes + " minutes, " + (seconds - 60 * minutes) + " seconds.");
 
         return sumOfValid / k;
 
