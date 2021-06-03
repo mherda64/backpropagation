@@ -31,12 +31,7 @@ public class DataSet implements Comparable<DataSet> {
     public int compareTo(DataSet o) {
         return Double.compare(getSingleClass(target), getSingleClass(o.target));
     }
-
-//    public static double getSingleClass(double[] target) throws IllegalArgumentException {
-//        return target[0];
-//    }
-
-    //original!!1
+    
     public static int getSingleClass(double[] target) throws IllegalArgumentException {
         double maxVal = 0;
         int index = 0;

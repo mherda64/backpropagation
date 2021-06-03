@@ -2,53 +2,73 @@ package backprop;
 
 public class Network {
 
-    //an array of neuron outputs
-    //first index is the layer
-    //second index is the neuron number
+    /**
+     * Tablica sygnałów wyjściowych neuronów.
+     * Indeks pierwszy jest warstwą.
+     * Indeks drugi jest indeksem neuronu.
+     */
     public double[][] output;
 
-    //an array of weights
-    //first index is the layer
-    //second index is the neuron TO WHICH the weight is connected to (on the right side)
-    //third index is the neuron FROM WHICH the weight is coming from (on the left side)
-    //index 0 isn't used
+    /**
+     * Tablica współczynników wagowych.
+     * Indeks pierwszy jest warstwą.
+     * Indeks drugi jest indeksem neuronu w warstwie, do którego wejścia skierowana jest waga.
+     * Indeks trzeci jest indeksem neuronu w warstwie poprzedniej, od którego wyjścia wychodzi waga.
+     */
     private double[][][] weight;
 
-    //an array of biases
-    //first index is the layer
-    //second index is the neuron number
-    //index 0 isn't used
+    /**
+     * Tablica biasów (przesunięć).
+     * Pierwszy indeks jest warstwą.
+     * Drugi indeks jest indeksem neuronu z danej warstwy.
+     * Indeks 0 nie jest wykorzysywany.
+     */
     private double[][] bias;
 
-    //an array of all the deltas calculated for each neuron
-    //first index is the layer
-    //second index is the neuron
-    //index 0 isn't used
+    /**
+     * Tablica wartości błędów (delt) obliczonych dla każdego z neuronów.
+     * Pierwszy indeks to warstwa.
+     * Drugi indeks to indeks neuronu.
+     * Indeks 0 nie jest wykorzystywany.
+     */
     private double[][] delta;
 
-    //beta parameter used in activation functions
+    /**
+     * Parametr Beta wykorzystywany w funkcjach aktywacji - współczynnik odpowiadający za stromość funkcji.
+     */
     private double beta;
 
-    //whether bipolar activation function is used
+    /**
+     * Flaga informująca o tym, czy do obliczeń powinna być wykorzystywana bipolarna funkcja aktywacji.
+     */
     private boolean bipolarActivationFlag;
 
-    //an array of all the output derivatives
-    //calculated using unipolarActivationDerivative
-    //first index is the layer
-    //second index is the neuron
+    /**
+     * Tablica pochodnych wyjść neuronów.
+     * Wykorzystywana do obliczania delt.
+     * Pierwszy indeks jest warstwą.
+     * Drugi indeks jest indeksem neuronu.
+     */
     private double[][] outputDerivative;
 
-    //an array of all the layers sizes
-    //number of neurons in each layer
+    /**
+     * Tablica zawierająca liczbę neuronów w każdej z warstw.
+     */
     public final int[] NETWORK_LAYERS_SIZES;
 
-    //size of the input layer
+    /**
+     * Liczba wejść.
+     */
     public final int INPUT_SIZE;
 
-    //size of the output layer
+    /**
+     * Liczba neuronów w warstwie wyjściowej.
+     */
     public final int OUTPUT_SIZE;
 
-    //number of layers
+    /**
+     * Liczba warstw.
+     */
     public final int NETWORK_SIZE;
 
     public Network(int[] NETWORK_LAYERS_SIZES, double beta, boolean bipolarActivation) {
@@ -61,6 +81,7 @@ public class Network {
         this.OUTPUT_SIZE = NETWORK_LAYERS_SIZES[NETWORK_LAYERS_SIZES.length - 1];
         this.NETWORK_SIZE = NETWORK_LAYERS_SIZES.length;
 
+        // Tworzenie tablic dla pól klasy.
         output = new double[NETWORK_SIZE][];
         weight = new double[NETWORK_SIZE][][];
         bias = new double[NETWORK_SIZE][];
@@ -72,25 +93,19 @@ public class Network {
             delta[i] = new double[NETWORK_LAYERS_SIZES[i]];
             outputDerivative[i] = new double[NETWORK_LAYERS_SIZES[i]];
 
-
-            //for the input layer (i = 0) there are no weights from the layer before
+            // Dla i = 0 warstwą wejściową jest wejście sieci.
             if (i > 0) {
-
-                //Using the Nguyen - Widrow optimal values
+                // Zakres, zapewniający optymalną inicjalizację współczynników wagowych,
+                // Zgodnie z rozważaniami Nguyena - Widrowa.
+                // Liczba neuronów w warstwie do potęgi 1 / rozmiar wejścia sieci.
                 double bound = Math.pow(NETWORK_LAYERS_SIZES[i], 1.0 / INPUT_SIZE);
 
-                //Last layer
+                // Inicjalizacja ostatniej wagi, której rozważania Nguyena - Widrowa nie dotyczą.
                 if (i == NETWORK_SIZE - 1) {
-                    //initialize the bias array with random values, also creating the array
                     bias[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], -0.5, 0.5);
-
-                    //initialize the weights array with random values, also creating the array
                     weight[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], NETWORK_LAYERS_SIZES[i-1], -0.5, 0.5);
                 } else {
-                    //initialize the bias array with random values, also creating the array
                     bias[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], -bound, bound);
-
-                    //initialize the weights array with random values, also creating the array
                     weight[i] = NetworkHelper.createRandomArray(NETWORK_LAYERS_SIZES[i], NETWORK_LAYERS_SIZES[i-1], -bound, bound);
                 }
             }
@@ -98,139 +113,151 @@ public class Network {
     }
 
     /**
-     * Calculates the output of the network.
-     * @param input The input array, its size has to be the same as the size of the input layer.
-     * @return The output of the network.
-     * @throws IllegalArgumentException When the size of the input array != the size of the input layer.
+     * Uczy sieć jednokrotnie wykorzystując jedną parę uczącą.
+     * @param input Tablica reprezentująca wejście sieci.
+     * @param target Tablica reprezentująca oczekiwane wyjście sieci.
+     * @param learningRate Współczynnik uczenia sieci.
+     * @throws IllegalArgumentException Gdy rozmiary wejścia lub wyjścia sieci nie są zgodne z oczekiwanymi.
      */
-    public double[] calculateOutput(double[] input) throws IllegalArgumentException {
-        if (input.length != INPUT_SIZE) {
-            throw new IllegalArgumentException("Number of input values:" + input.length + " is not equal the input size:" + INPUT_SIZE);
-        }
-
-        //the output of the first layer is actually the input
-        this.output[0] = input;
-
-        //iterate through every layer
-        for (int layer = 1; layer < NETWORK_SIZE; layer++) {
-            //in each layer, iterate through every neuron
-            //neuron - index of the neuron in the current layer
-            for (int neuron = 0; neuron < NETWORK_LAYERS_SIZES[layer]; neuron++) {
-
-                double sum = 0;
-
-                //for each neuron in previous layer
-                //get the weights and outputs between current neuron and the previous neuron and add the product
-                //to the sum
-                //prevNeuron - index of the neuron in the previous layer
-                for (int prevNeuron = 0; prevNeuron < NETWORK_LAYERS_SIZES[layer - 1]; prevNeuron++) {
-                    sum += weight[layer][neuron][prevNeuron] * output[layer - 1][prevNeuron];
-                }
-
-                //add the bias of the neuron to the sum
-                sum += bias[layer][neuron];
-
-                //outputs are dependent on the activation function used
-                //if unipolar activation function is used
-                if (!bipolarActivationFlag) {
-
-                    //calculate the output for each neuron
-                    output[layer][neuron] = unipolarActivation(sum, beta);
-
-                    //calculate the derivative output for each neuron
-                    //we could use activationDerivative method, but it would mean three times more calculations
-                    //as derivative of sigmoid is just sigmoid * (1 - sigmoid), and we are already calculating
-                    //our sigmoid over in the output value
-                    outputDerivative[layer][neuron] = beta * output[layer][neuron] * (1 - output[layer][neuron]);
-                } else {
-                    //calculate the output for each neuron
-                    output[layer][neuron] = bipolarActivation(sum, beta);
-
-                    //calculate the derivative output for each neuron
-                    outputDerivative[layer][neuron] = beta * (1 - output[layer][neuron] * output[layer][neuron]);
-                }
-            }
-        }
-        //return the output of the network
-        //by returning the last layer's output
-        return output[NETWORK_SIZE - 1];
-    }
-
     public void train(double[] input, double[] target, double learningRate) throws IllegalArgumentException {
-        //check whether the input and output arrays are valid
         if (input.length != INPUT_SIZE)
             throw new IllegalArgumentException("Input size != input layer size!");
 
         if (target.length != OUTPUT_SIZE)
             throw new IllegalArgumentException("Output size != output layer size!");
 
-        //set the values of each neuron's outputs given the input
+        // Oblicza wyjście dla każdego neuronu w sieci na podstawie wejścia.
         calculateOutput(input);
 
+        // Oblicza delty dla każdego neuronu w sieci, wykonując wsteczną propagację błędu.
         calculateDeltas(target);
 
+        // Aktualizuje współczynniki wagowe oraz biasy dla każdego neuronu w sieci.
         updateWeightsAndBiases(learningRate);
-
     }
 
-    //calculates the delta value - error multiplied by the derivative of the activaction function
-    public void calculateDeltas(double[] target) {
-        //calculating delta for the output layer
-        for (int neuron = 0; neuron < NETWORK_LAYERS_SIZES[NETWORK_SIZE - 1]; neuron++) {
-            delta[NETWORK_SIZE - 1][neuron] = (output[NETWORK_SIZE - 1][neuron] - target[neuron]) * outputDerivative[NETWORK_SIZE - 1][neuron];
+    /**
+     * Oblicza wyjście sieci.
+     * @param input Tablica wejść sieci.
+     * @return Tablica wyjść sieci.
+     * @throws IllegalArgumentException Gdy rozmiar tablicy wejściowej != rozmiar wejścia sieci.
+     */
+    public double[] calculateOutput(double[] input) throws IllegalArgumentException {
+        if (input.length != INPUT_SIZE) {
+            throw new IllegalArgumentException("Number of input values:" + input.length + " is not equal the input size:" + INPUT_SIZE);
         }
 
-        //calculating delta for the hidden layers, beginning from the back
-        for (int layer = NETWORK_SIZE - 2; layer > 0; layer--) {
+        // Wyjściem pierwszej warstwy w kodzie jest w rzeczywistości tablica wejść sieci.
+        this.output[0] = input;
+
+        // Iteracja przez każdą z warstw.
+        for (int layer = 1; layer < NETWORK_SIZE; layer++) {
+            // W każdej z warstw iteracja przez każdy z neuronów.
+            // neuron - indeks neuronu w .
             for (int neuron = 0; neuron < NETWORK_LAYERS_SIZES[layer]; neuron++) {
 
                 double sum = 0;
 
-                //for every neuron in the next (front) layer, get the delta times weight
+                // Dla każdego neuronu z warstwy poprzedniej, oblicz iloczyn wagi oraz wyjścia poprzedniego neuronu,
+                // po czym dodaj ją do sumy.
+                // prevNeuron - indeks neuronu z poprzedniej warstwy.
+                for (int prevNeuron = 0; prevNeuron < NETWORK_LAYERS_SIZES[layer - 1]; prevNeuron++) {
+                    sum += weight[layer][neuron][prevNeuron] * output[layer - 1][prevNeuron];
+                }
+
+                // Dodaj bias do sumy.
+                sum += bias[layer][neuron];
+
+                // Oblicz wyjście neuronu w zależności od wykorzysywanej funkcji aktywacji.
+                if (!bipolarActivationFlag) {
+
+                    // Oblicz wyjście neuronu wykorzystując unipolarną funkcję aktywacji.
+                    output[layer][neuron] = unipolarActivation(sum, beta);
+
+                    // Oblicz pochodną wyjścia neuronu wykorzystując unipolarną funkcję aktywacji.
+                    outputDerivative[layer][neuron] = beta * output[layer][neuron] * (1 - output[layer][neuron]);
+                } else {
+                    // Oblicz wyjście neuronu wykorzystując bipolarną funkcję aktywacji.
+                    output[layer][neuron] = bipolarActivation(sum, beta);
+
+                    // Oblicz pochodną wyjścia neuronu wykorzystując bipolarną funkcję aktywacji.
+                    outputDerivative[layer][neuron] = beta * (1 - output[layer][neuron] * output[layer][neuron]);
+                }
+            }
+        }
+        // Zwróć tablicę reprezentującą wyjście sieci.
+        return output[NETWORK_SIZE - 1];
+    }
+
+    /**
+     * Oblicza deltę dla każdego z neuronów. Implementuje algorytm wstecznej propagacji,
+     * obliczając wartości od ostatniej warstwy sieci.
+     * @param target Tablica reprezentująca oczekiwane wyjście sieci.
+     */
+    public void calculateDeltas(double[] target) {
+        // Obliczanie delty dla ostatniej warstwy sieci.
+        for (int neuron = 0; neuron < NETWORK_LAYERS_SIZES[NETWORK_SIZE - 1]; neuron++) {
+            delta[NETWORK_SIZE - 1][neuron] = (output[NETWORK_SIZE - 1][neuron] - target[neuron]) * outputDerivative[NETWORK_SIZE - 1][neuron];
+        }
+
+        // Obliczanie delty dla warstw ukrtych, w kierunku wstecznym.
+        for (int layer = NETWORK_SIZE - 2; layer > 0; layer--) {
+            for (int neuron = 0; neuron < NETWORK_LAYERS_SIZES[layer]; neuron++) {
+                double sum = 0;
+
+                // Dla każdego neuronu z następnej warstwy, dodaj do sumy jego deltę
+                // pomnożoną razy wagę łączącą dany neuron z neuronem z warstwy następnej.
                 for (int nextNeuron = 0; nextNeuron < NETWORK_LAYERS_SIZES[layer + 1]; nextNeuron++) {
                     sum += weight[layer + 1][nextNeuron][neuron] * delta[layer + 1][nextNeuron];
                 }
 
-                //calculate the delta for current neuron
+                // Oblicz deltę dla danego neuronu.
                 this.delta[layer][neuron] = sum * outputDerivative[layer][neuron];
             }
         }
     }
 
-    //updates the weights depending on the learning rate and the deltas
+    /**
+     * Aktualizuje współczynniki wagowe oraz biasy (przesunięcia) każdego neuronu w sieci,
+     * wykorzystując współczynnik uczenia sieci.
+     * @param learningRate Współczynnik uczenia sieci.
+     */
     public void updateWeightsAndBiases(double learningRate) {
         for (int layer = 1; layer < NETWORK_SIZE; layer++) {
             for (int neuron = 0; neuron < NETWORK_LAYERS_SIZES[layer]; neuron++) {
                 //calculating the delta times learning rate, used in updating both weight and bias
+                // Dla każdego neuronu oblicza wartość delty pomnożonej przez ujemny współczynnik uczenia.
                 double deltaTimesLearningRate = - learningRate * delta[layer][neuron];
 
-                //updating the biases
+                // Aktualizacja biasów.
                 bias[layer][neuron] += deltaTimesLearningRate;
 
-                //updating weights using previous and current neuron indexes
+                // Aktualizuje wagi, wykorzystując wcześniej obliczony iloczyn pomnożony przez wyjście neuronu
+                // z warstwy poprzedniej.
                 for (int prevNeuron = 0; prevNeuron < NETWORK_LAYERS_SIZES[layer - 1]; prevNeuron++) {
-//                    double deltaWeight = - learningRate * output[layer - 1][prevNeuron] * delta[layer][neuron];
                     weight[layer][neuron][prevNeuron] += deltaTimesLearningRate * output[layer - 1][prevNeuron];
                 }
             }
         }
     }
 
-    private static double sigmoid(double x) {
-        return 1.0 / (1 + Math.exp(-x));
-    }
-
+    /**
+     * Unipolarna funkcja aktywacji neuronu.
+     * @param x Parametr wejściowy funkcji.
+     * @param beta Współczynnik beta funkcji aktywacji.
+     * @return Wyjście funkcji aktywacji.
+     */
     private static double unipolarActivation(double x, double beta) {
         return 1.0 / (1 + Math.exp(-x * beta));
     }
 
+    /**
+     * Bipolarna funkcja aktywacji neuronu.
+     * @param x Parametr wejściowy funkcji.
+     * @param beta Współczynnik beta funkcji aktywacji.
+     * @return Wyjście funkcji aktywacji.
+     */
     private static double bipolarActivation(double x, double beta) {
         return Math.tanh(x * beta);
     }
-
-    private static double sigmoidDerivative(double x) {
-        return sigmoid(x) * (1.0 - sigmoid(x));
-    }
-
-
 }

@@ -1,6 +1,5 @@
 package backprop;
 
-
 import org.knowm.xchart.*;
 import org.knowm.xchart.style.Styler;
 import org.knowm.xchart.style.colors.XChartSeriesColors;
@@ -50,53 +49,55 @@ public class Main {
 
         File logFile = new File("log.txt");
 
-        long startTime = System.currentTimeMillis();
+//        long startTime = System.currentTimeMillis();
+//
+//        ArrayList<Double> xV = new ArrayList<>();
+//        ArrayList<Double> yV = new ArrayList<>();
+//
+//        int counter = 0;
+//        for (double lr = 0.0001; lr < 1; lr *= 10) {
+//            System.out.println("Testing for lr:" + lr);
+//            xV.add(lr);
+////            yV.add(backpropagationCrossValidate(new int[]{27, 50, 40, 7}, 1, false, input, target, 1000, lr, 10));
+//            yV.add(backpropagation(new int[]{27, 50, 40, 7}, 1, false, input, target, 15_000, lr, 6, logFile));
+//
+//            counter++;
+//        }
+//
+//        long stopTime = System.currentTimeMillis();
+//
+//        double[] xVals = new double[xV.size()];
+//        double[] yVals = new double[yV.size()];
+//
+//        for (int i = 0; i < xV.size(); i++) {
+//            xVals[i] = xV.get(i);
+//            yVals[i] = yV.get(i);
+//        }
+//
+//
+//
+//        XYChart xyChart = new XYChartBuilder()
+//                .width(800)
+//                .height(600)
+//                .theme(Styler.ChartTheme.Matlab)
+//                .title("PK(lr)")
+//                .xAxisTitle("Learning rate")
+//                .yAxisTitle("PK")
+//                .build();
+//
+//        XYSeries series1 = xyChart.addSeries("Target", xVals, yVals);
+//
+//        JFrame chartFrame = new SwingWrapper(xyChart).displayChart();
+//
+//
+//        double seconds = (stopTime - startTime) / 1000.0;
+//        double minutes = (double) ((int) seconds / 60);
+//
+//        System.out.println("Complete Time:" + minutes + " minutes, " + (seconds - 60 * minutes) + " seconds.");
 
-        ArrayList<Double> xV = new ArrayList<>();
-        ArrayList<Double> yV = new ArrayList<>();
-
-        int counter = 0;
-        for (double lr = 0.0001; lr <= 1; lr *= 10) {
-            xV.add(lr);
-            yV.add(backpropagationCrossValidate(new int[]{27, 50, 40, 7}, 1, false, input, target, 500, lr, 10));
-
-            counter++;
-        }
-
-        long stopTime = System.currentTimeMillis();
-
-        double[] xVals = new double[xV.size()];
-        double[] yVals = new double[yV.size()];
-
-        for (int i = 0; i < xV.size(); i++) {
-            xVals[i] = xV.get(i);
-            yVals[i] = yV.get(i);
-        }
-
-
-
-        XYChart xyChart = new XYChartBuilder()
-                .width(800)
-                .height(600)
-                .theme(Styler.ChartTheme.Matlab)
-                .title("PK(lr)")
-                .xAxisTitle("Learning rate")
-                .yAxisTitle("PK")
-                .build();
-
-        XYSeries series1 = xyChart.addSeries("Target", xVals, yVals);
-
-        JFrame chartFrame = new SwingWrapper(xyChart).displayChart();
-
-
-        double seconds = (stopTime - startTime) / 1000.0;
-        double minutes = (double) ((int) seconds / 60);
-
-        System.out.println("Complete Time:" + minutes + " minutes, " + (seconds - 60 * minutes) + " seconds.");
-
-//        backpropagationCrossValidate(new int[]{27, 50, 40, 7}, 1, false, input, target, 500, 0.01, 5);
-
-//        backpropagation(new int[]{27, 50, 40, 7}, 1, false, input, target, 4000, 0.005, 6, logFile);
+//        backpropagationCrossValidate(new int[]{27, 50, 40, 7}, 1, false, input, target, 1000, 0.01, 10);
+//
+        backpropagation(new int[]{27, 50, 40, 7}, 1, false, input, target, 5_000, 0.001, 6, logFile);
     }
 
     public static double validateNetwork(Network network, double[][] input, double[][] target) {
@@ -160,9 +161,11 @@ public class Main {
         }
 
         double sumOfValid = 0;
+        double targetError = 0.25 / ((k - 1) * singleSize);
 
         long startTime = System.currentTimeMillis();
 
+        outerloop:
         for (int testingSet = 0; testingSet < k; testingSet++) {
 
             Network network = new Network(networkLayers, beta, bipolarActivation);
@@ -184,8 +187,9 @@ public class Main {
 //                        sumOfSquaredErrors += error;
 
                     }
-
-//                    System.out.println("Training set:" + trainingSet + " MSE:" + (sumOfSquaredErrors / dataParts.get(trainingSet).size()) );
+                    double MSE = (sumOfSquaredErrors / dataParts.get(trainingSet).size());
+//                    System.out.println("target error:" + targetError);
+//                    System.out.println("Training set:" + trainingSet + " MSE:" + MSE );
                 }
             }
 
@@ -261,6 +265,7 @@ public class Main {
         ArrayList<Double> xMSE = new ArrayList<>();
         ArrayList<Double> yMSETraining = new ArrayList<>();
         ArrayList<Double> yMSEValidating = new ArrayList<>();
+        ArrayList<Double> yMSETesting = new ArrayList<>();
 
         // Creating arrays with chart values
         double[] xVals = new double[testData.size()];
@@ -279,7 +284,7 @@ public class Main {
                 .width(800)
                 .height(600)
                 .theme(Styler.ChartTheme.Matlab)
-                .title("Output of the testing data set")
+                .title("Output of the testing data set for lr:" + learningRate)
                 .xAxisTitle("Test record")
                 .yAxisTitle("Class")
                 .build();
@@ -303,7 +308,6 @@ public class Main {
         long startTime = System.currentTimeMillis();
 
         double lastValidationMSE = 0;
-//        int maxValidations = 6;
         int currentValidations = 0;
 
         int epoch = 0;
@@ -321,6 +325,7 @@ public class Main {
 
             if (printCounter > 10) {
                 double sumOfSquaredErrorsValidation = 0;
+                double sumOfSquaredErrorsTesting = 0;
 
                 // Update test data chart
                 for (int j = 0; j < testData.size(); j++) {
@@ -346,7 +351,6 @@ public class Main {
                 xMSE.add((double) epoch);
                 yMSETraining.add(MSE);
 
-
                 // Calculate SSE and MSE for validation data
                 for (int j = 0; j < validationData.size(); j++) {
                     double[] outputVal = network.calculateOutput(validationData.get(j).getInput());
@@ -355,9 +359,19 @@ public class Main {
                 }
 
                 double MSEValidation = sumOfSquaredErrorsValidation / validationData.size();
-
                 yMSEValidating.add(MSEValidation);
 
+                // Calculate SSE and MSE for testing data
+                for (int j = 0; j < testData.size(); j++) {
+                    double[] outputVal = network.calculateOutput(testData.get(j).getInput());
+                    double error = calculateSquaredError(outputVal, testData.get(j).getTarget());
+                    sumOfSquaredErrorsTesting += error;
+                }
+
+                double MSETesting = sumOfSquaredErrorsTesting / validationData.size();
+                yMSETesting.add(MSETesting);
+
+                // Checking stop condition
                 if (MSEValidation > lastValidationMSE) {
                     currentValidations++;
                 } else {
@@ -372,7 +386,8 @@ public class Main {
                 lastValidationMSE = MSEValidation;
 
                 System.out.println("Epoch:" + epoch + " SSE:" + sumOfSquaredErrors + " MSE:" + MSE + " SSEvalidation:" + sumOfSquaredErrorsValidation
-                        + " MSEvalidation:" + MSEValidation + " % valid:" + (double) valid / testData.size() * 100);
+                        + " MSEvalidation:" + MSEValidation + " SSEtesting:" + sumOfSquaredErrorsTesting +
+                        " MSEtesting:" + MSETesting + " % valid:" + (double) valid / testData.size() * 100);
                 printCounter = 0;
             }
         }
@@ -383,6 +398,7 @@ public class Main {
         double[] xMSEVals = new double[xMSE.size()];
         double[] yMSEValsTraining = new double[yMSETraining.size()];
         double[] yMSEValsValidating = new double[yMSEValidating.size()];
+        double[] yMSEValsTesting = new double[yMSETesting.size()];
 
         for (int i = 0; i < xMSE.size(); i++) {
             xMSEVals[i] = xMSE.get(i);
@@ -393,11 +409,15 @@ public class Main {
         for (int i = 0; i < yMSEValidating.size(); i++) {
             yMSEValsValidating[i] = yMSEValidating.get(i);
         }
+        for(int i = 0; i < yMSETesting.size(); i++) {
+            yMSEValsTesting[i] = yMSETesting.get(i);
+        }
 
-        XYChart xyChartMSE = new XYChartBuilder().width(800).height(600).theme(Styler.ChartTheme.Matlab).title("MSE").xAxisTitle("Epoch").yAxisTitle("MSE").build();
+        XYChart xyChartMSE = new XYChartBuilder().width(800).height(600).theme(Styler.ChartTheme.Matlab).title("MSE for lr:" + learningRate).xAxisTitle("Epoch").yAxisTitle("MSE").build();
 
         XYSeries series1MSETraining = xyChartMSE.addSeries("MSE Training", xMSEVals, yMSEValsTraining);
         XYSeries series2MSEValidating = xyChartMSE.addSeries("MSE Validating", xMSEVals, yMSEValsValidating);
+        XYSeries series3MSETesting = xyChartMSE.addSeries("MSE Testing", xMSEVals, yMSEValsTesting);
 
 //        series1MSETraining.setLineWidth(2);
 //        series1MSETraining.setLineColor(XChartSeriesColors.GREEN);
